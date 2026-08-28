@@ -1,5 +1,5 @@
 name: my-hermes
-version: 1.0.0
+version: 1.1.0
 description: "Hermes profile with Agnes AI integration for image/video generation, Cloudflare R2 storage, and custom media domains."
 author: "WanderleeDev"
 license: MIT
