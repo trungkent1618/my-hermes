@@ -127,23 +127,16 @@ class AgnesVideoGenProvider(VideoGenProvider):
         return "agnes-video-2.5-flash"
 
     def _select_model(self, prompt: str, requested_model: Optional[str]) -> str:
-        """Auto-select model based on prompt content."""
+        """Return the requested model, else the safe default (free flash model).
+
+        We deliberately do NOT auto-upgrade to paid models (agnes-video-2.5) or to
+        agnes-video-v2.0 based on prompt keywords: v2.0 uses a different request
+        schema (num_frames/frame_rate/width/height) and the local proxy is not
+        configured for it, so an upgrade would fail. Always default to flash.
+        """
         if requested_model:
             return requested_model
-        
-        prompt_lower = prompt.lower()
-        
-        # Use v2.0 for legacy/compatibility requests
-        if any(kw in prompt_lower for kw in ["legacy", "v2", "old", "basic"]):
-            return "agnes-video-v2.0"
-        
-        # Use 2.5 for higher quality requests
-        if any(kw in prompt_lower for kw in ["high quality", "cinematic", "detailed", 
-                                               "professional", "premium", "best"]):
-            return "agnes-video-2.5"
-        
-        # Default to flash for speed
-        return "agnes-video-2.5-flash"
+        return self.default_model()  # "agnes-video-2.5-flash"
 
     def capabilities(self) -> Dict[str, Any]:
         return {
