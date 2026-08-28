@@ -282,8 +282,15 @@ class AgnesVideoGenProvider(VideoGenProvider):
         model_id = self._select_model(prompt, model)
         api_key = self.api_key or ""
         # Route through AGNES_BASE_URL (proxy, e.g. http://127.0.0.1:8317/v1) so the
-        # proxy handles key rotation/region. Falls back to apihub when unset.
-        base_url = os.environ.get("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1").rstrip("/")
+        # proxy handles key rotation/region. Read from profile .env first (so it
+        # works without relying on Hermes injecting the var into the environment),
+        # then os.environ, then fall back to apihub.
+        penv = _profile_env()
+        base_url = (
+            penv.get("AGNES_BASE_URL")
+            or os.environ.get("AGNES_BASE_URL")
+            or "https://apihub.agnes-ai.com/v1"
+        ).rstrip("/")
         duration_str = str(duration or 5)
 
         # Check if image_url is a local path and convert to imgbb/R2 URL if needed
