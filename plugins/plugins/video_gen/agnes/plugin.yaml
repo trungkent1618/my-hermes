@@ -1,7 +1,0 @@
-name: agnes
-version: 1.0.0
-description: "Agnes AI video generation backend"
-author: xam
-kind: backend
-requires_env:
-  - AGNES_API_KEY
