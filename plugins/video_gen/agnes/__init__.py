@@ -364,7 +364,13 @@ class AgnesVideoGenProvider(VideoGenProvider):
             # is apihub) keeps the original self-poll behavior.
             poll_mode = os.environ.get("AGNES_VIDEO_POLL", "auto").lower()
             if poll_mode == "auto":
-                poll_mode = "proxy" if "apihub.agnes-ai.com" not in base_url else "direct"
+                # Proxy randomizes the upstream region (global apihub.agnes-ai.com
+                # vs china api.agnes-ai.cn), so the client must NOT hardcode a
+                # region. "auto" = proxy mode whenever AGNES_BASE_URL points at the
+                # local proxy (anything other than the two real Agnes endpoints);
+                # direct self-poll only when hitting Agnes directly.
+                _real_endpoints = ("apihub.agnes-ai.com", "api.agnes-ai.cn")
+                poll_mode = "proxy" if not any(e in base_url for e in _real_endpoints) else "direct"
 
             if poll_mode == "proxy" or not video_id:
                 # Use the URL the proxy already resolved.
