@@ -41,6 +41,30 @@ def _profile_env() -> dict:
     return env
 
 
+def _local_data_dir() -> Path:
+    """Local media storage root (absolute). Defaults to F:\\hermes_agent_data\\my-hermes.
+
+    Override with MY_HERMES_DATA_DIR in the profile .env. Subdirs images/ and
+    videos/ are created on demand. Hermes renders absolute local paths in chat.
+    """
+    penv = _profile_env()
+    raw = penv.get("MY_HERMES_DATA_DIR") or os.environ.get("MY_HERMES_DATA_DIR") or r"F:\hermes_agent_data\my-hermes"
+    root = Path(raw)
+    (root / "images").mkdir(parents=True, exist_ok=True)
+    (root / "videos").mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _save_image_local(b64_data: str, prefix: str = "image") -> str:
+    """Decode base64 and write under the local data dir; return absolute path."""
+    raw = base64.b64decode(b64_data)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    short = __import__("uuid").uuid4().hex[:8]
+    path = _local_data_dir() / "images" / f"{prefix}_{ts}_{short}.png"
+    path.write_bytes(raw)
+    return str(path)
+
+
 def _load_registry() -> dict:
     if REGISTRY_PATH.exists():
         try:
@@ -345,9 +369,16 @@ class AgnesImageGenProvider(ImageGenProvider):
             if "data" in data and len(data["data"]) > 0:
                 item = data["data"][0]
                 if item.get("b64_json"):
-                    # Default storage: r2 (permanent public URL)
-                    result_storage = storage or "r2"
-                    image = self._save_and_register(item["b64_json"], prompt, result_storage)
+                    # Local storage only (R2 removed per user request)
+                    image = _save_image_local(item["b64_json"], self.name)
+                    reg = _load_registry()
+                    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+                    reg.setdefault("local", {})[image] = {
+                        "url": image,
+                        "prompt": prompt[:100],
+                        "created": now,
+                    }
+                    _save_registry(reg)
                     if not image:
                         return error_response(
                             error="Failed to save image",
@@ -358,49 +389,28 @@ class AgnesImageGenProvider(ImageGenProvider):
                             aspect_ratio=aspect_ratio,
                         )
                 elif item.get("url"):
-                    # Use Agnes CDN URL directly - it's public and valid for ~1 hour
-                    # Only download+upload to R2 if explicitly requested
-                    result_storage = storage or "r2"
-                    image = item["url"]
-                    if result_storage == "r2":
-                        try:
-                            with httpx.Client(timeout=30) as client:
-                                img_resp = client.get(item["url"])
-                                img_resp.raise_for_status()
-                                path = save_b64_image(
-                                    base64.b64encode(img_resp.content).decode(),
-                                    prefix=self.name,
-                                    extension="png",
-                                )
-                                local_path = str(path)
-                                img_data = img_resp.content
-                                r2_key = f"images/{time.strftime('%Y%m%d_%H%M%S')}.png"
-                                r2_url = _upload_to_r2(img_data, r2_key)
-                                if r2_url:
-                                    reg = _load_registry()
-                                    now = time.strftime("%Y-%m-%dT%H:%M:%S")
-                                    reg.setdefault("r2", {})[r2_key] = {
-                                        "url": r2_url,
-                                        "local_path": local_path,
-                                        "prompt": prompt[:100],
-                                        "created": now,
-                                    }
-                                    _save_registry(reg)
-                                    image = r2_url
-                                    print(f"[ImageGen] Uploaded to R2: {r2_url}")
-                                else:
-                                    # Fallback to Agnes URL if R2 fails
-                                    reg = _load_registry()
-                                    now = time.strftime("%Y-%m-%dT%H:%M:%S")
-                                    reg.setdefault("local", {})[local_path] = {
-                                        "url": item["url"],
-                                        "prompt": prompt[:100],
-                                        "created": now,
-                                    }
-                                    _save_registry(reg)
-                                    print(f"[ImageGen] R2 upload failed, using Agnes URL")
-                        except Exception as e:
-                            print(f"[ImageGen] Download failed: {e}, using URL directly")
+                    # Agnes CDN URL (~1h valid). Download to local data dir so the
+                    # file persists and renders in chat.
+                    try:
+                        with httpx.Client(timeout=30) as client:
+                            img_resp = client.get(item["url"])
+                            img_resp.raise_for_status()
+                        local_path = _save_image_local(
+                            base64.b64encode(img_resp.content).decode(), self.name
+                        )
+                        reg = _load_registry()
+                        now = time.strftime("%Y-%m-%dT%H:%M:%S")
+                        reg.setdefault("local", {})[local_path] = {
+                            "url": item["url"],
+                            "prompt": prompt[:100],
+                            "created": now,
+                        }
+                        _save_registry(reg)
+                        image = local_path
+                        print(f"[ImageGen] Saved locally: {local_path}")
+                    except Exception as e:
+                        print(f"[ImageGen] Download failed: {e}, using URL directly")
+                        image = item["url"]
                 else:
                     return error_response(
                         error="No image URL in response",

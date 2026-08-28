@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional
 import os
 import time
 import json
+import base64
+import uuid
 from pathlib import Path
 
 import httpx
@@ -37,6 +39,36 @@ def _profile_env() -> dict:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
     return env
+
+
+def _local_data_dir() -> Path:
+    """Local media storage root (absolute). Defaults to F:\\hermes_agent_data\\my-hermes.
+
+    Override with MY_HERMES_DATA_DIR in the profile .env. Subdirs images/ and
+    videos/ are created on demand. Hermes renders absolute local paths in chat.
+    """
+    penv = _profile_env()
+    raw = penv.get("MY_HERMES_DATA_DIR") or os.environ.get("MY_HERMES_DATA_DIR") or r"F:\hermes_agent_data\my-hermes"
+    root = Path(raw)
+    (root / "images").mkdir(parents=True, exist_ok=True)
+    (root / "videos").mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _save_video_local(video_url: str, prefix: str = "video") -> str:
+    """Download a video URL and write under the local data dir; return absolute path.
+
+    Agnes CDN URLs are ephemeral, so we materialise the bytes locally.
+    """
+    with httpx.Client(timeout=120) as client:
+        resp = client.get(video_url, follow_redirects=True)
+        resp.raise_for_status()
+        data = resp.content
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    short = uuid.uuid4().hex[:8]
+    path = _local_data_dir() / "videos" / f"{prefix}_{ts}_{short}.mp4"
+    path.write_bytes(data)
+    return str(path)
 
 
 def _load_registry() -> dict:
@@ -391,7 +423,14 @@ class AgnesVideoGenProvider(VideoGenProvider):
                         prompt=prompt,
                         aspect_ratio=aspect_ratio,
                     )
-                result = video_url
+                # Default: save locally so the file persists and renders in chat.
+                # (R2 removed per user request — local storage only.)
+                try:
+                    result = _save_video_local(video_url, self.name)
+                    print(f"  [Video] Saved locally: {result}")
+                except Exception as e:
+                    print(f"  [Video] Local save failed ({e}); returning CDN URL")
+                    result = video_url
                 print(f"  [Video] Proxy returned final URL")
             else:
                 if not video_id:
@@ -438,20 +477,8 @@ class AgnesVideoGenProvider(VideoGenProvider):
                     aspect_ratio=aspect_ratio,
                 )
 
-            # Download video and upload to R2
-            video_url = result
-            r2_key = f"videos/{time.strftime('%Y%m%d_%H%M%S')}_agnes.mp4"
-            try:
-                with httpx.Client(timeout=120) as dl_client:
-                    video_resp = dl_client.get(video_url)
-                    video_resp.raise_for_status()
-                    r2_url = _upload_video_to_r2(video_resp.content, r2_key)
-                    if r2_url:
-                        video_url = r2_url
-                        print(f"[Video] Uploaded to R2: {r2_url}")
-            except Exception as e:
-                print(f"[Video] R2 upload failed: {e}, keeping Agnes URL")
-
+            # Local storage only (R2 removed per user request). `result` already
+            # holds the absolute local path from the proxy/save step above.
             return success_response(
                 video=result,
                 model=model_id,
