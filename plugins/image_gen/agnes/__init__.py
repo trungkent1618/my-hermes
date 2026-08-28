@@ -19,6 +19,28 @@ from agent.image_gen_provider import (
 REGISTRY_PATH = Path.home() / ".hermes" / "image_registry.json"
 
 
+def _profile_env() -> dict:
+    """Load the profile-local .env file directly.
+
+    Precedence for Agnes credentials: profile .env > os.environ > config.yaml.
+    Reading the profile .env ourselves guarantees we always use the proxy
+    client key (AGNES_API_KEY in this file), never a real Agnes key that may
+    happen to live in the global environment.
+    """
+    env: dict = {}
+    # __file__: <profile>/plugins/image_gen/agnes/__init__.py
+    profile_dir = Path(__file__).resolve().parents[3]
+    env_path = profile_dir / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    return env
+
+
 def _load_registry() -> dict:
     if REGISTRY_PATH.exists():
         try:
@@ -124,11 +146,21 @@ class AgnesImageGenProvider(ImageGenProvider):
 
     @property
     def api_key(self) -> Optional[str]:
-        """Get API key from env, then config.yaml."""
+        """Get API key from profile .env first, then env, then config.yaml.
+
+        Reading the profile .env directly guarantees we use the proxy client key,
+        never a real Agnes key that may be set in the global environment.
+        """
+        penv = _profile_env()
+        key = penv.get("AGNES_API_KEY")
+        if key:
+            return key
+
         key = os.environ.get("AGNES_API_KEY")
         if key:
             return key
-        
+
+        # Fallback: read from config.yaml
         config_path = Path.home() / ".hermes" / "config.yaml"
         if config_path.exists():
             with open(config_path) as f:
