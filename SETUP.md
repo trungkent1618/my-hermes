@@ -29,12 +29,15 @@ nano ~/.hermes/profiles/my-hermes/.env
 # Get yours at: https://agnes-ai.com
 AGNES_API_KEY=your_key_here
 
-# Cloudflare R2 credentials
-# Get yours at: https://dash.cloudflare.com → R2 → Manage R2 API Tokens
-R2_ACCOUNT_ID=your_account_id
-R2_ACCESS_KEY_ID=your_access_key
-R2_SECRET_ACCESS_KEY=your_secret_key
+# Local media storage root (images/videos saved here instead of R2)
+MY_HERMES_DATA_DIR=F:\hermes_agent_data\my-hermes
 ```
+
+## Local storage (no R2)
+
+This profile stores all generated media as local files — no Cloudflare R2, no
+public URLs. Set `MY_HERMES_DATA_DIR` in `.env` to the root folder; the plugins
+create `images/` and `videos/` subdirs and return absolute paths.
 
 
 ## Using an Agnes Proxy (key rotation)
@@ -54,16 +57,6 @@ With `AGNES_BASE_URL` set, image and video requests go through the proxy. For vi
 the proxy returns the final asset URL (no client-side polling of `apihub.agnes-ai.com`),
 so the proxy's key rotation is always honored. Leave `AGNES_BASE_URL` empty to call
 Agnes directly (requires a real `AGNES_API_KEY`).
-
-### Optional: Custom Domains
-
-If you want permanent public URLs with your own domain:
-
-1. Create two R2 buckets: `hermes-image-db` and `hermes-video-db`
-2. Connect custom domains in Cloudflare Dashboard:
-   - `media.yourdomain.com` → `hermes-image-db`
-   - `video.yourdomain.com` → `hermes-video-db`
-3. Update the plugin URL builders if needed
 
 ## Usage
 
@@ -107,5 +100,4 @@ my-hermes/
 
 - [Agnes AI Docs](https://wiki.agnes-ai.com)
 - [Hermes Agent Docs](https://hermes-agent.nousresearch.com)
-- [Cloudflare R2 Docs](https://developers.cloudflare.com/r2)
 - [Profile Distributions](https://hermes-agent.nousresearch.com/docs/user-guide/profile-distributions)
