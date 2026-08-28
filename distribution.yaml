@@ -18,3 +18,9 @@ env_requires:
   - name: R2_SECRET_ACCESS_KEY
     description: "R2 S3 Secret Access Key"
     required: true
+  - name: AGNES_BASE_URL
+    description: "Optional. Point at a local Agnes proxy (e.g. http://127.0.0.1:8317/v1) to use key rotation instead of a real Agnes key. Leave empty for direct Agnes API."
+    required: false
+  - name: AGNES_VIDEO_POLL
+    description: "Optional. 'auto' (default) = proxy mode when AGNES_BASE_URL is set (proxy polls async video to completion). 'direct' only when AGNES_BASE_URL points at apihub."
+    required: false

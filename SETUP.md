@@ -36,6 +36,25 @@ R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 ```
 
+
+## Using an Agnes Proxy (key rotation)
+
+Instead of putting a real Agnes API key in `.env`, you can point the plugins at a
+local Agnes proxy (e.g. EasyCLIProxyAPI). The proxy holds the real keys and rotates
+them; this profile only authenticates to the proxy with its client key.
+
+```bash
+# In .env
+AGNES_API_KEY=<proxy-client-key>        # e.g. 123456 — NOT a real Agnes key
+AGNES_BASE_URL=http://127.0.0.1:8317/v1 # your proxy's /v1 endpoint
+AGNES_VIDEO_POLL=auto                    # proxy already polls video to completion
+```
+
+With `AGNES_BASE_URL` set, image and video requests go through the proxy. For video,
+the proxy returns the final asset URL (no client-side polling of `apihub.agnes-ai.com`),
+so the proxy's key rotation is always honored. Leave `AGNES_BASE_URL` empty to call
+Agnes directly (requires a real `AGNES_API_KEY`).
+
 ### Optional: Custom Domains
 
 If you want permanent public URLs with your own domain:

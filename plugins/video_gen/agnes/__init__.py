@@ -180,8 +180,13 @@ class AgnesVideoGenProvider(VideoGenProvider):
         while time.time() - start < timeout:
             poll_count += 1
             try:
+                # Derive poll host from AGNES_BASE_URL (strip /v1, add /agnesapi),
+                # matching the proxy's own AgnesVideoPollBaseURL logic.
+                poll_base = os.environ.get("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1").rstrip("/")
+                if poll_base.endswith("/v1"):
+                    poll_base = poll_base[:-3]
                 r = client.get(
-                    "https://apihub.agnes-ai.com/agnesapi",
+                    f"{poll_base}/agnesapi",
                     headers=headers,
                     params={"video_id": video_id, "model_name": model},
                     timeout=10,
@@ -252,7 +257,9 @@ class AgnesVideoGenProvider(VideoGenProvider):
 
         model_id = self._select_model(prompt, model)
         api_key = self.api_key or ""
-        base_url = "https://apihub.agnes-ai.com/v1"
+        # Route through AGNES_BASE_URL (proxy, e.g. http://127.0.0.1:8317/v1) so the
+        # proxy handles key rotation/region. Falls back to apihub when unset.
+        base_url = os.environ.get("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1").rstrip("/")
         duration_str = str(duration or 5)
 
         # Check if image_url is a local path and convert to imgbb/R2 URL if needed
@@ -319,21 +326,51 @@ class AgnesVideoGenProvider(VideoGenProvider):
                 data = response.json()
 
             video_id = data.get("video_id")
-            if not video_id:
-                return error_response(
-                    error=f"No video_id in response: {data}",
-                    error_type="provider_error",
-                    provider=self.name,
-                    model=model_id,
-                    prompt=prompt,
-                    aspect_ratio=aspect_ratio,
+            # Proxy mode: the upstream proxy already polls the async task to
+            # completion and returns the final asset URL in THIS response, so we
+            # must NOT self-poll (self-polling would hit apihub.agnes-ai.com
+            # directly, bypassing the proxy's key rotation). Direct mode (base_url
+            # is apihub) keeps the original self-poll behavior.
+            poll_mode = os.environ.get("AGNES_VIDEO_POLL", "auto").lower()
+            if poll_mode == "auto":
+                poll_mode = "proxy" if "apihub.agnes-ai.com" not in base_url else "direct"
+
+            if poll_mode == "proxy" or not video_id:
+                # Use the URL the proxy already resolved.
+                data_list = data.get("data") or [{}]
+                first = data_list[0] if data_list else {}
+                video_url = (
+                    data.get("video_url")
+                    or data.get("url")
+                    or first.get("url")
+                    or first.get("video_url")
                 )
+                if not video_url:
+                    return error_response(
+                        error=f"No video URL in proxy response: {data}",
+                        error_type="provider_error",
+                        provider=self.name,
+                        model=model_id,
+                        prompt=prompt,
+                        aspect_ratio=aspect_ratio,
+                    )
+                result = video_url
+                print(f"  [Video] Proxy returned final URL")
+            else:
+                if not video_id:
+                    return error_response(
+                        error=f"No video_id in response: {data}",
+                        error_type="provider_error",
+                        provider=self.name,
+                        model=model_id,
+                        prompt=prompt,
+                        aspect_ratio=aspect_ratio,
+                    )
+                print(f"  [Video] Task created: {video_id}")
 
-            print(f"  [Video] Task created: {video_id}")
-
-            # Poll for completion (2 minute timeout) - create new client for polling
-            with httpx.Client(timeout=60) as poll_client:
-                result = self._poll_video(poll_client, headers, video_id, model_id, timeout=120)
+                # Poll for completion (2 minute timeout) - create new client for polling
+                with httpx.Client(timeout=60) as poll_client:
+                    result = self._poll_video(poll_client, headers, video_id, model_id, timeout=120)
 
             if result is None:
                 return error_response(
