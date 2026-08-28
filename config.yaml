@@ -1,0 +1,46 @@
+model:
+  default: meituan/longcat-2.0:free
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+
+agent:
+  max_turns: 150
+  verbose: false
+  reasoning_effort: medium
+
+plugins:
+  enabled:
+    - image_gen/agnes
+    - video_gen/agnes
+
+image_gen:
+  provider: agnes
+  use_gateway: true
+  model: agnes-image-2.1-flash
+
+video_gen:
+  provider: agnes
+  model: agnes-video-2.5-flash
+
+code_execution:
+  timeout: 300
+  max_tool_calls: 50
+
+streaming:
+  enabled: false
+
+toolsets:
+  default:
+    - web
+    - terminal
+    - file
+    - search
+    - cron
+    - memory
+    - session_search
+    - skills
+    - todo
+    - tts
+    - vision
+    - image_generate
+    - delegate_task

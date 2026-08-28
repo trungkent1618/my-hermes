@@ -1,0 +1,20 @@
+name: my-hermes
+version: 1.0.0
+description: "Hermes profile with Agnes AI integration for image/video generation, Cloudflare R2 storage, and custom media domains."
+author: "WanderleeDev"
+license: MIT
+hermes_requires: ">=0.12.0"
+
+env_requires:
+  - name: AGNES_API_KEY
+    description: "Agnes AI API key from https://agnes-ai.com"
+    required: true
+  - name: R2_ACCOUNT_ID
+    description: "Cloudflare account ID (from R2 dashboard)"
+    required: true
+  - name: R2_ACCESS_KEY_ID
+    description: "R2 S3 Access Key ID"
+    required: true
+  - name: R2_SECRET_ACCESS_KEY
+    description: "R2 S3 Secret Access Key"
+    required: true
