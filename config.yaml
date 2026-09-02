@@ -1,7 +1,17 @@
 model:
-  default: hy3-free
-  provider: opencode-free
-  base_url: 'https://opencode.ai/zen/v1'
+  default: agnes-2.5-flash
+  provider: agnes-myhermes
+  base_url: http://127.0.0.1:8080/v1
+  key_env: HERMES_CUSTOM_AGNES_MYHERMES_API_KEY
+providers:
+  agnes-myhermes:
+    name: Agnes-My Hermes
+    base_url: http://127.0.0.1:8080/v1
+    model: agnes-2.5-flash
+    discover_models: true
+    models:
+      agnes-2.5-flash: {}
+    key_env: HERMES_CUSTOM_AGNES_MYHERMES_API_KEY
 toolsets:
   default:
     - web
@@ -16,11 +26,14 @@ toolsets:
     - tts
     - vision
     - image_generate
+    - video_generate
     - delegate_task
 agent:
   max_turns: 150
   verbose: false
   reasoning_effort: medium
+browser:
+  backend: browser-use
 plugins:
   enabled:
     - image_gen/agnes
@@ -38,6 +51,56 @@ image_gen:
 video_gen:
   provider: agnes
   model: agnes-video-2.5-flash
+platform_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - cronjob
+    - delegation
+    - file
+    - image_gen
+    - memory
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - tts
+    - vision
+    - web
+known_plugin_toolsets:
+  cli:
+    - a2a
+    - spotify
+known_builtin_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - context_engine
+    - cronjob
+    - delegation
+    - discord
+    - discord_admin
+    - file
+    - homeassistant
+    - image_gen
+    - memory
+    - session_search
+    - skills
+    - spotify
+    - stt
+    - terminal
+    - todo
+    - tts
+    - video
+    - video_gen
+    - vision
+    - web
+    - x_search
+    - yuanbao
 
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,
