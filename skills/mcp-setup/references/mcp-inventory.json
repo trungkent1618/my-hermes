@@ -1,0 +1,35 @@
+{
+  "exported_at": "2026-08-29T20:42:19Z",
+  "mcp": [
+    {
+      "name": "codegraph",
+      "url": "",
+      "auth": "none",
+      "status": "enabled"
+    },
+    {
+      "name": "engram",
+      "url": "",
+      "auth": "none",
+      "status": "enabled"
+    },
+    {
+      "name": "context7",
+      "url": "",
+      "auth": "none",
+      "status": "enabled"
+    },
+    {
+      "name": "cloudflare-api",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "auth": "oauth",
+      "status": "enabled"
+    },
+    {
+      "name": "cloudflare-bindings",
+      "url": "https://bindings.mcp.cloudflare.com/mcp",
+      "auth": "oauth",
+      "status": "enabled"
+    }
+  ]
+}
