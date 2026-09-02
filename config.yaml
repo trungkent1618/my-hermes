@@ -26,7 +26,7 @@ toolsets:
     - tts
     - vision
     - image_generate
-    - video_generate
+    - video_gen
     - delegate_task
 agent:
   max_turns: 150
