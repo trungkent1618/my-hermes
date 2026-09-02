@@ -61,12 +61,14 @@ platform_toolsets:
     - delegation
     - file
     - image_gen
+    - kanban
     - memory
     - session_search
     - skills
     - terminal
     - todo
     - tts
+    - video_gen
     - vision
     - web
 known_plugin_toolsets:
