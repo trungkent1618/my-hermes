@@ -55,6 +55,26 @@ def _local_data_dir() -> Path:
     return root
 
 
+def _v20_dimensions(aspect_ratio: str) -> tuple[int, int]:
+    """Return Agnes v2.0 pixel dimensions for a supported aspect ratio."""
+    return {
+        "16:9": (1280, 768),
+        "9:16": (768, 1280),
+        "1:1": (960, 960),
+        "4:3": (1024, 768),
+        "3:4": (768, 1024),
+        "21:9": (1344, 576),
+    }.get(aspect_ratio, (1280, 768))
+
+
+def _v20_frames(duration: Optional[int]) -> tuple[int, int]:
+    """Convert v2.0 duration to valid 8n+1 frames at 24 FPS."""
+    seconds = int(duration or 5)
+    if seconds < 3 or seconds > 18:
+        raise ValueError("agnes-video-v2.0 duration must be between 3 and 18 seconds")
+    return seconds * 24 + 1, 24
+
+
 def _save_video_local(video_url: str, prefix: str = "video") -> str:
     """Download a video URL and write under the local data dir; return absolute path.
 
@@ -350,36 +370,77 @@ class AgnesVideoGenProvider(VideoGenProvider):
                 "Content-Type": "application/json",
             }
 
-            payload = {
-                "model": model_id,
-                "prompt": prompt,
-                "seconds": duration_str,
-                "mode": mode,
-                "size": "720P",
-                "aspect_ratio": aspect_ratio,
-            }
+            if model_id == "agnes-video-v2.0":
+                # v2.0 is a different API family: pixel dimensions + frames/FPS.
+                width, height = _v20_dimensions(aspect_ratio)
+                num_frames, frame_rate = _v20_frames(duration)
+                payload = {
+                    "model": model_id,
+                    "prompt": prompt,
+                    "width": width,
+                    "height": height,
+                    "num_frames": num_frames,
+                    "frame_rate": frame_rate,
+                }
+                if negative_prompt:
+                    payload["negative_prompt"] = negative_prompt
+                if seed is not None:
+                    payload["seed"] = seed
 
-            if mode == "reference":
                 sources = []
                 if resolved_image_url or image_url:
-                    actual_url = resolved_image_url or image_url
-                    sources.append(actual_url)
-                if reference_image_urls:
-                    for ref_url in reference_image_urls:
-                        if ref_url.startswith("/"):
-                            reg = _load_registry()
-                            # Check imgbb first
-                            imgbb_entry = reg.get("imgbb", {}).get(ref_url)
-                            if imgbb_entry and imgbb_entry.get("url"):
-                                ref_url = imgbb_entry["url"]
-                            else:
-                                # Check R2
-                                for r2_key, entry in reg.get("r2", {}).items():
-                                    if entry.get("local_path") == ref_url:
-                                        ref_url = entry.get("url")
-                                        break
-                        sources.append(ref_url)
-                payload["images"] = sources[:5]  # Max 5 for Flash
+                    sources.append(resolved_image_url or image_url)
+                sources.extend(reference_image_urls or [])
+                sources = [s for s in sources if s]
+                if sources:
+                    if any(not str(s).startswith(("http://", "https://")) for s in sources):
+                        return error_response(
+                            error="agnes-video-v2.0 image inputs must be public http(s) URLs",
+                            error_type="invalid_input",
+                            provider=self.name,
+                            model=model_id,
+                            prompt=prompt,
+                            aspect_ratio=aspect_ratio,
+                        )
+                    if len(sources) >= 2:
+                        payload["extra_body"] = {
+                            "image": sources[:3],
+                            "mode": "keyframes",
+                        }
+                    else:
+                        # Official v2.0 single-image form: top-level image and
+                        # no mode=reference.
+                        payload["image"] = sources[0]
+            else:
+                # 2.5 / 2.5-flash OpenAI-Videos schema. Flash is locked to 720P.
+                payload = {
+                    "model": model_id,
+                    "prompt": prompt,
+                    "seconds": duration_str,
+                    "mode": mode,
+                    "size": "720P",
+                    "aspect_ratio": aspect_ratio,
+                }
+
+                if mode == "reference":
+                    sources = []
+                    if resolved_image_url or image_url:
+                        actual_url = resolved_image_url or image_url
+                        sources.append(actual_url)
+                    if reference_image_urls:
+                        for ref_url in reference_image_urls:
+                            if ref_url.startswith("/"):
+                                reg = _load_registry()
+                                imgbb_entry = reg.get("imgbb", {}).get(ref_url)
+                                if imgbb_entry and imgbb_entry.get("url"):
+                                    ref_url = imgbb_entry["url"]
+                                else:
+                                    for r2_key, entry in reg.get("r2", {}).items():
+                                        if entry.get("local_path") == ref_url:
+                                            ref_url = entry.get("url")
+                                            break
+                            sources.append(ref_url)
+                    payload["images"] = sources[:5]  # Max 5 for Flash
 
             print(f"  [Video] Creating task with model={model_id}...")
 
