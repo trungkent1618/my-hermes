@@ -418,6 +418,24 @@ class AgnesVideoGenProvider(VideoGenProvider):
                     or first.get("url")
                     or first.get("video_url")
                 )
+                if not video_url and video_id:
+                    # Agnes2API-Nexus returns a queued task from POST /v1/videos.
+                    # Poll its gateway-side /agnesapi route instead of the unused
+                    # /v1/videos/:id route. This keeps region/key selection inside
+                    # the gateway and works for both global and China upstreams.
+                    with httpx.Client(timeout=60) as poll_client:
+                        video_url = self._poll_video(
+                            poll_client, headers, video_id, model_id, timeout=180
+                        )
+                    if video_url and video_url.startswith(("FAILED:", "TIMEOUT")):
+                        return error_response(
+                            error=f"Video polling failed: {video_url}",
+                            error_type="provider_error",
+                            provider=self.name,
+                            model=model_id,
+                            prompt=prompt,
+                            aspect_ratio=aspect_ratio,
+                        )
                 if not video_url:
                     return error_response(
                         error=f"No video URL in proxy response: {data}",

@@ -43,11 +43,9 @@ happens the update aborts and the live plugins are NOT updated.
 1. Image + video plugins read `AGNES_BASE_URL` (default apihub) instead of
    hardcoding apihub — requests now route through Agnes2API-Nexus
    (`http://127.0.0.1:8080/v1`) for gateway-managed key rotation.
-2. Video plugin `AGNES_VIDEO_POLL=auto`: when the gateway returns a completed
-   video URL, the plugin uses it without client-side polling. Agnes2API-Nexus
-   currently returns a queued task and its poll route is not implemented yet
-   (`501 nexus_not_implemented`), so Nexus video completion remains blocked until
-   that gateway route is implemented. No R2 fallback is allowed.
+2. Video plugin `AGNES_VIDEO_POLL=auto`: the gateway may return a queued task;
+   the plugin polls Nexus via `/agnesapi?video_id=...&model_name=...`, then saves
+   the completed video locally. No direct global/china polling and no R2 fallback.
 3. Video `_select_model` no longer auto-upgrades to paid `agnes-video-2.5` or to
    `agnes-video-v2.0` (different request schema, not enabled on proxy). Always
    defaults to free `agnes-video-2.5-flash` unless a model is explicitly given.

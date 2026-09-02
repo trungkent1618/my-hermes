@@ -43,11 +43,10 @@ create `images/` and `videos/` subdirs and return absolute paths.
 ## Agnes2API-Nexus gateway
 - Active gateway: `http://127.0.0.1:8080/v1`.
 - `AGNES_API_KEY` is the Nexus client key; the real Agnes keys stay inside Nexus.
-- Nexus currently accepts `POST /v1/images/generations` and `POST /v1/videos`.
-- Video caveat: the current Nexus build may return a queued task from POST and
-  `501 nexus_not_implemented` for `GET /v1/videos/:id`; video completion polling
-  must be implemented in Nexus before image-to-video can complete through this
-  gateway. Do not bypass Nexus or upload to R2 as a workaround.
+- Nexus accepts `POST /v1/images/generations` and `POST /v1/videos`.
+- For video 2.5-flash, Nexus may return a queued task from POST. The plugin polls
+  the gateway-side `GET /agnesapi?video_id=<id>&model_name=<model>` route, keeps
+  region/key selection inside Nexus, then saves the completed MP4 locally.
 
 
 ```bash
