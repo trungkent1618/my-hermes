@@ -1,26 +1,20 @@
 name: my-hermes
 version: 1.1.0
-description: "Hermes profile with Agnes AI integration for image/video generation, Cloudflare R2 storage, and custom media domains."
+description: "Hermes profile with Agnes AI image/video generation through Agnes2API-Nexus and local media storage."
 author: "WanderleeDev"
 license: MIT
 hermes_requires: ">=0.12.0"
 
 env_requires:
   - name: AGNES_API_KEY
-    description: "Agnes AI API key from https://agnes-ai.com"
-    required: true
-  - name: R2_ACCOUNT_ID
-    description: "Cloudflare account ID (from R2 dashboard)"
-    required: true
-  - name: R2_ACCESS_KEY_ID
-    description: "R2 S3 Access Key ID"
-    required: true
-  - name: R2_SECRET_ACCESS_KEY
-    description: "R2 S3 Secret Access Key"
+    description: "Agnes gateway client key"
     required: true
   - name: AGNES_BASE_URL
-    description: "Optional. Point at a local Agnes proxy (e.g. http://127.0.0.1:8317/v1) to use key rotation instead of a real Agnes key. Leave empty for direct Agnes API."
+    description: "Agnes gateway base URL (e.g. http://127.0.0.1:8080/v1 for Agnes2API-Nexus)"
     required: false
   - name: AGNES_VIDEO_POLL
-    description: "Optional. 'auto' (default) = proxy mode when AGNES_BASE_URL is set (proxy polls async video to completion). 'direct' only when AGNES_BASE_URL points at apihub."
+    description: "Optional. 'auto' uses gateway-returned completed video; 'direct' enables direct Agnes polling."
+    required: false
+  - name: MY_HERMES_DATA_DIR
+    description: "Local media root for images and videos"
     required: false

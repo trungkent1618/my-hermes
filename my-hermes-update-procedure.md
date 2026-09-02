@@ -30,7 +30,7 @@ happens the update aborts and the live plugins are NOT updated.
   `plugins/image_gen/agnes/__init__.py`
 - Video plugin: no paid-model auto-upgrade — `_select_model` should return
   `self.default_model()` (agnes-video-2.5-flash); no `agnes-video-2.5"` upgrade.
-- `.env` preserved: `AGNES_API_KEY=123456`, `AGNES_BASE_URL=http://127.0.0.1:8317/v1`.
+- `.env` preserved: `AGNES_API_KEY=<nexus-client-key>`, `AGNES_BASE_URL=http://127.0.0.1:8080/v1`.
 
 ## Local fork workflow (authoritative copy)
 - Fork repo: `C:\Users\Admin\my-hermes-fork` (origin = trungkent1618/my-hermes,
@@ -41,11 +41,13 @@ happens the update aborts and the live plugins are NOT updated.
 
 ## What is patched vs upstream (WanderleeDev/my-hermes)
 1. Image + video plugins read `AGNES_BASE_URL` (default apihub) instead of
-   hardcoding apihub — so requests route through the local Agnes proxy
-   (EasyCLIProxyAPI, port 8317, client key 123456) for key rotation.
-2. Video plugin `AGNES_VIDEO_POLL=auto`: when AGNES_BASE_URL is the proxy, it
-   uses the final URL the proxy returns (proxy already polls async video to
-   completion). No client-side polling of apihub (preserves proxy key rotation).
+   hardcoding apihub — requests now route through Agnes2API-Nexus
+   (`http://127.0.0.1:8080/v1`) for gateway-managed key rotation.
+2. Video plugin `AGNES_VIDEO_POLL=auto`: when the gateway returns a completed
+   video URL, the plugin uses it without client-side polling. Agnes2API-Nexus
+   currently returns a queued task and its poll route is not implemented yet
+   (`501 nexus_not_implemented`), so Nexus video completion remains blocked until
+   that gateway route is implemented. No R2 fallback is allowed.
 3. Video `_select_model` no longer auto-upgrades to paid `agnes-video-2.5` or to
    `agnes-video-v2.0` (different request schema, not enabled on proxy). Always
    defaults to free `agnes-video-2.5-flash` unless a model is explicitly given.

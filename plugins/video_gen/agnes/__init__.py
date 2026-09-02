@@ -238,7 +238,11 @@ class AgnesVideoGenProvider(VideoGenProvider):
             try:
                 # Derive poll host from AGNES_BASE_URL (strip /v1, add /agnesapi),
                 # matching the proxy's own AgnesVideoPollBaseURL logic.
-                poll_base = os.environ.get("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1").rstrip("/")
+                poll_base = (
+                    _profile_env().get("AGNES_BASE_URL")
+                    or os.environ.get("AGNES_BASE_URL")
+                    or "https://apihub.agnes-ai.com/v1"
+                ).rstrip("/")
                 if poll_base.endswith("/v1"):
                     poll_base = poll_base[:-3]
                 r = client.get(
