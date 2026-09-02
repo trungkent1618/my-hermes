@@ -57,10 +57,10 @@ AGNES_BASE_URL=http://127.0.0.1:8080/v1 # Agnes2API-Nexus endpoint
 AGNES_VIDEO_POLL=auto                    # gateway polls video to completion
 ```
 
-With `AGNES_BASE_URL` set, image and video requests go through the proxy. For video,
-the proxy returns the final asset URL (no client-side polling of `apihub.agnes-ai.com`),
-so the proxy's key rotation is always honored. Leave `AGNES_BASE_URL` empty to call
-Agnes directly (requires a real `AGNES_API_KEY`).
+With `AGNES_BASE_URL` set, image and video requests go through Agnes2API-Nexus.
+Image generation is verified working. Video creation currently returns a queued task;
+completion requires Nexus to implement `GET /v1/videos/:id`. The profile must not
+bypass the gateway or upload to R2.
 
 ## Usage
 
