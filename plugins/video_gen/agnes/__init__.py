@@ -317,9 +317,9 @@ class AgnesVideoGenProvider(VideoGenProvider):
 
         model_id = self._select_model(prompt, model)
         api_key = self.api_key or ""
-        # Route through AGNES_BASE_URL (proxy, e.g. http://127.0.0.1:8317/v1) so the
-        # proxy handles key rotation/region. Read from profile .env first (so it
-        # works without relying on Hermes injecting the var into the environment),
+        # Route through AGNES_BASE_URL (e.g. http://127.0.0.1:8080/v1 for
+        # Agnes2API-Nexus) so the gateway handles key rotation/region. Read from
+        # profile .env first (so it is independent of injected environment),
         # then os.environ, then fall back to apihub.
         penv = _profile_env()
         base_url = (

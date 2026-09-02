@@ -93,12 +93,17 @@ def main() -> int:
             print(f"  {v}x  {k}")
 
     if ok == 0:
-        print("\n[DIAGNOSIS] 0 succeeded. If image via the same proxy works, the Agnes")
-        print("VIDEO keys inside the proxy pool are expired/revoked — renew them in the")
-        print("proxy config (E:\\hermes_agent\\tools\\CLIProxyAPI\\.agnes-package\\config.yaml")
-        print("or EasyCLIProxyAPI-Custom GUI). This is NOT a my-hermes bug.")
+        base_url = penv.get("AGNES_BASE_URL", "")
+        if ":8080" in base_url:
+            print("\n[DIAGNOSIS] Agnes2API-Nexus created tasks but video polling is not")
+            print("implemented in the current gateway build (501 nexus_not_implemented).")
+            print("Do not rotate keys or upload to R2; Nexus must implement GET /v1/videos/:id.")
+        else:
+            print("\n[DIAGNOSIS] 0 succeeded. If image via the same gateway works, the Agnes")
+            print("VIDEO credentials inside the gateway pool may be expired/revoked.")
+            print("This is NOT a my-hermes bug; inspect the active gateway configuration.")
         return 1
-    print("\n[OK] Pipeline healthy — proxy key rotation produced video.")
+    print("\n[OK] Pipeline healthy — gateway produced video and local save succeeded.")
     return 0
 
 

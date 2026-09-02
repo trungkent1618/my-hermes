@@ -86,17 +86,14 @@ happens the update aborts and the live plugins are NOT updated.
 ## Troubleshooting video 401 `无效的令牌` (invalid token)
 - Symptom: every video request via proxy returns `HTTP 401 ... 无效的令牌`
   (Chinese "invalid token") from upstream Agnes, while **image** via the same
-  proxy still works.
-- Cause: the **Agnes VIDEO API keys inside the proxy pool are expired/revoked**
-  (not a my-hermes bug). The plugin correctly sends the proxy client key
-  `123456`; the proxy accepts it but then forwards with an invalid Agnes video
-  credential.
+  gateway still works.
+- Cause: an Agnes upstream credential inside the gateway pool is expired/revoked
+  (not a my-hermes bug). The plugin sends the Nexus client key; the gateway
+  accepts it but may forward with an invalid Agnes video credential.
 - Fix (outside this profile — do NOT edit proxy source per user rule):
-  rotate/renew the Agnes video keys in the proxy config, e.g.
-  `E:\hermes_agent\tools\CLIProxyAPI\.agnes-package\config.yaml` or the
-  EasyCLIProxyAPI-Custom GUI. After renewing, video works again (pipeline is
-  verified correct — it succeeded earlier when a valid key was rotated in).
-
+  rotate/renew Agnes credentials inside the active gateway. For the current setup,
+  inspect Agnes2API-Nexus at `http://127.0.0.1:8080` (do not edit its source from
+  this profile).
 ## Gotcha: video 401 in manual Python tests (NOT a real bug)
 - If you test the plugin directly with `python` (not via the Hermes app), and
   you do NOT export `AGNES_BASE_URL`/`AGNES_API_KEY` into the environment, an
